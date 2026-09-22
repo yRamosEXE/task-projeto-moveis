@@ -3,7 +3,7 @@ Version=1.0
 Type=Application
 Name=Iniciar Adequi Moveis
 Comment=Inicializa o ambiente Django e React
-Exec=bash -c 'DIR="$(dirname %k)"; cd "$DIR"; chmod +x executar.sh; gnome-terminal -- bash -c "./executar.sh; exec bash"'
+Exec=bash -c 'cd "$(dirname "%k")"; chmod +x executar.sh; ./executar.sh; bash'
 Icon=utilities-terminal
-Terminal=false
+Terminal=true
 Categories=Development;

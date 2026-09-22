@@ -1,20 +1,26 @@
 #!/bin/bash
-set -e
 
-# Garante que o script roda a partir da raiz do projeto
+# Garante o diretório correto
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
 
 echo "====================================================="
-echo "   Iniciando Sistema Adequi Móveis"
+echo "   A verificar ambiente Adequi Móveis..."
 echo "====================================================="
 
-# 1. Configurar e Subir o Backend (Django)
-echo "🐍 [1/2] Verificando ambiente Python (Django)..."
-cd "$DIR/backend"
+# Verificar se o venv do python está disponível no sistema
+python3 -m venv --help >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "❌ Erro: O pacote python3-venv não está instalado no Ubuntu."
+    echo "💡 Execute no terminal: sudo apt update && sudo apt install python3-venv python3-pip"
+    read -p "Pressione Enter para fechar..."
+    exit 1
+fi
 
+# 1. Configurar e Subir Backend
+cd "$DIR/backend"
 if [ ! -d "venv" ]; then
-    echo "⚙️ Criando ambiente virtual Python (primeira execução)..."
+    echo "⚙️ A criar ambiente virtual Python..."
     python3 -m venv venv
 fi
 
@@ -22,34 +28,30 @@ source venv/bin/activate
 pip install -r requirements.txt --quiet
 python manage.py migrate --noinput
 
-echo "🚀 Rodando servidor Django em segundo plano..."
+echo "🚀 A iniciar servidor Django..."
 python manage.py runserver &
 PID_BACK=$!
 
-# 2. Configurar e Subir o Frontend (React / Vite)
-echo "⚛️ [2/2] Verificando dependências Node (React)..."
+# 2. Configurar e Subir Frontend
 cd "$DIR/frontend"
-
 if [ ! -d "node_modules" ]; then
-    echo "📦 Instalando pacotes do frontend (primeira execução)..."
+    echo "📦 A instalar dependências do Frontend (npm install)..."
     npm install --quiet
 fi
 
-echo "🚀 Rodando Frontend Vite..."
+echo "🚀 A iniciar servidor Vite..."
 npm run dev &
 PID_FRONT=$!
 
-# Abre o navegador automaticamente na página do sistema
 sleep 3
-xdg-open http://localhost:5173 2>/dev/null || true
+xdg-open http://localhost:5173 2>/dev/null || sensible-browser http://localhost:5173 2>/dev/null || true
 
 echo "====================================================="
-echo "   SISTEMA NO AR!"
+echo "   SISTEMA EM EXECUÇÃO!"
 echo "   Frontend: http://localhost:5173"
 echo "   Backend:  http://127.0.0.1:8000"
-echo "   (Feche esta janela para encerrar o sistema)"
+echo "   (Feche esta janela para encerrar os servidores)"
 echo "====================================================="
 
-# Ao fechar a janela ou dar Ctrl+C, encerra os dois servidores juntos
 trap "kill $PID_BACK $PID_FRONT 2>/dev/null" EXIT
 wait
