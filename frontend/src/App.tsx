@@ -13,45 +13,42 @@ interface Movel {
 function App() {
   const [moveis, setMoveis] = useState<Movel[]>([]);
   const [novoMovel, setNovoMovel] = useState({ nome: '', marca: '', quantidade: '', preco: '' });
-  
-  // 1. Estado para saber qual móvel estamos a editar. Se for null, estamos a criar.
   const [editandoId, setEditandoId] = useState<number | null>(null);
 
   useEffect(() => {
+    carregarMoveis();
+  }, []);
+
+  const carregarMoveis = () => {
     axios.get('http://localhost:8000/api/moveis/')
       .then(resposta => setMoveis(resposta.data))
-      .catch(erro => console.error(erro));
-  }, []);
+      .catch(erro => console.error('Erro ao carregar móveis:', erro));
+  };
 
   const lidarComMudanca = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNovoMovel({ ...novoMovel, [e.target.name]: e.target.value });
   };
 
-  // 2. A função foi renomeada para salvarMovel porque agora serve para Criar e Editar
   const salvarMovel = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (editandoId) {
-      // MODO EDIÇÃO (PUT)
       axios.put(`http://localhost:8000/api/moveis/${editandoId}/`, novoMovel)
         .then(resposta => {
-          // Atualiza apenas o móvel editado na lista visual
           setMoveis(moveis.map(m => m.id === editandoId ? resposta.data : m));
-          cancelarEdicao(); // Limpa o formulário e sai do modo de edição
+          cancelarEdicao();
         })
-        .catch(erro => console.error("Erro ao editar:", erro));
+        .catch(erro => console.error('Erro ao editar:', erro));
     } else {
-      // MODO CRIAÇÃO (POST)
       axios.post('http://localhost:8000/api/moveis/', novoMovel)
         .then(resposta => {
           setMoveis([...moveis, resposta.data]);
           setNovoMovel({ nome: '', marca: '', quantidade: '', preco: '' });
         })
-        .catch(erro => console.error("Erro ao adicionar:", erro));
+        .catch(erro => console.error('Erro ao adicionar:', erro));
     }
   };
 
-  // 3. Preenche o formulário com os dados do móvel que queremos alterar
   const iniciarEdicao = (movel: Movel) => {
     setNovoMovel({
       nome: movel.nome,
@@ -59,68 +56,181 @@ function App() {
       quantidade: String(movel.quantidade),
       preco: movel.preco
     });
-    setEditandoId(movel.id); // Liga o modo de edição
+    setEditandoId(movel.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // 4. Limpa tudo se nos arrependermos de editar
   const cancelarEdicao = () => {
     setNovoMovel({ nome: '', marca: '', quantidade: '', preco: '' });
     setEditandoId(null);
   };
 
   const apagarMovel = (id: number) => {
-    axios.delete(`http://localhost:8000/api/moveis/${id}/`)
-      .then(() => setMoveis(moveis.filter(movel => movel.id !== id)))
-      .catch(erro => console.error("Erro ao apagar:", erro));
+    if (window.confirm('Tem certeza de que deseja excluir este móvel?')) {
+      axios.delete(`http://localhost:8000/api/moveis/${id}/`)
+        .then(() => setMoveis(moveis.filter(movel => movel.id !== id)))
+        .catch(erro => console.error('Erro ao apagar:', erro));
+    }
+  };
+
+  const formatarMoeda = (valor: string | number) => {
+    const num = Number(valor) || 0;
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num);
   };
 
   return (
-    <div className="App">
-      <h1>Sistema de Gestão de Móveis</h1>
+    <div className="container">
+      <header className="header">
+        <h1>Gestão de Inventário de Móveis</h1>
+        <p className="subtitle">Cadastre, edite e controle o estoque em tempo real</p>
+      </header>
 
-      <form onSubmit={salvarMovel} style={{ marginBottom: '30px', padding: '20px', border: '1px solid #aaa', borderRadius: '8px' }}>
-        {/* O título muda dependendo do modo */}
-        <h2>{editandoId ? 'Editar Móvel' : 'Adicionar Novo Móvel'}</h2>
-        
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <input type="text" name="nome" placeholder="Nome" value={novoMovel.nome} onChange={lidarComMudanca} required />
-          <input type="text" name="marca" placeholder="Marca" value={novoMovel.marca} onChange={lidarComMudanca} required />
-          <input type="number" name="quantidade" placeholder="Quantidade" value={novoMovel.quantidade} onChange={lidarComMudanca} required />
-          <input type="number" step="0.01" name="preco" placeholder="Preço" value={novoMovel.preco} onChange={lidarComMudanca} required />
-          
-          <button type="submit" style={{ backgroundColor: editandoId ? '#28a745' : '#007bff', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px' }}>
-            {editandoId ? 'Atualizar' : 'Guardar Móvel'}
-          </button>
-          
-          {/* Botão de cancelar só aparece quando estamos a editar */}
-          {editandoId && (
-            <button type="button" onClick={cancelarEdicao} style={{ backgroundColor: '#6c757d', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px' }}>
-              Cancelar
-            </button>
-          )}
+      <section className="card form-card">
+        <div className="card-header">
+          <h2>{editandoId ? '✏️ Editar Móvel' : '➕ Cadastrar Novo Móvel'}</h2>
+          {editandoId && <span className="badge-editing">Modo de Edição</span>}
         </div>
-      </form>
-      
-      <div className="lista-moveis">
-        {moveis.map(movel => (
-          <div key={movel.id} style={{ border: '1px solid #ccc', margin: '10px', padding: '10px', textAlign: 'left', position: 'relative' }}>
-            <h3>{movel.nome}</h3>
-            <p><strong>Marca:</strong> {movel.marca}</p>
-            <p><strong>Quantidade:</strong> {movel.quantidade}</p>
-            <p><strong>Preço:</strong> {movel.preco} €</p>
-            
-            {/* Agrupamento dos botões Editar e Apagar */}
-            <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '8px' }}>
-              <button onClick={() => iniciarEdicao(movel)} style={{ backgroundColor: '#ffc107', color: 'black', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }}>
-                Editar
-              </button>
-              <button onClick={() => apagarMovel(movel.id)} style={{ backgroundColor: '#dc3545', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }}>
-                Apagar
-              </button>
-            </div>
+
+        <form onSubmit={salvarMovel} className="form-grid">
+          <div className="input-group">
+            <label htmlFor="nome">Nome do Móvel</label>
+            <input
+              id="nome"
+              type="text"
+              name="nome"
+              placeholder="Ex: Cadeira Ergonômica"
+              value={novoMovel.nome}
+              onChange={lidarComMudanca}
+              required
+            />
           </div>
-        ))}
-      </div>
+
+          <div className="input-group">
+            <label htmlFor="marca">Marca</label>
+            <input
+              id="marca"
+              type="text"
+              name="marca"
+              placeholder="Ex: Herman Miller"
+              value={novoMovel.marca}
+              onChange={lidarComMudanca}
+              required
+            />
+          </div>
+
+          <div className="input-group">
+            <label htmlFor="quantidade">Estoque (Qtd)</label>
+            <input
+              id="quantidade"
+              type="number"
+              min="0"
+              name="quantidade"
+              placeholder="Ex: 15"
+              value={novoMovel.quantidade}
+              onChange={lidarComMudanca}
+              required
+            />
+          </div>
+
+          <div className="input-group">
+            <label htmlFor="preco">Preço Unitário (R$)</label>
+            <input
+              id="preco"
+              type="number"
+              step="0.01"
+              min="0"
+              name="preco"
+              placeholder="Ex: 1250.00"
+              value={novoMovel.preco}
+              onChange={lidarComMudanca}
+              required
+            />
+          </div>
+
+          <div className="form-actions">
+            <button type="submit" className={editandoId ? 'btn btn-success' : 'btn btn-primary'}>
+              {editandoId ? 'Atualizar Dados' : 'Guardar Móvel'}
+            </button>
+
+            {editandoId && (
+              <button type="button" onClick={cancelarEdicao} className="btn btn-secondary">
+                Cancelar
+              </button>
+            )}
+          </div>
+        </form>
+      </section>
+
+      <section className="card">
+        <div className="card-header">
+          <h2>📦 Itens no Estoque</h2>
+          <span className="count-badge">{moveis.length} cadastrados</span>
+        </div>
+
+        {moveis.length === 0 ? (
+          <div className="empty-state">
+            <p>Nenhum móvel cadastrado até o momento.</p>
+          </div>
+        ) : (
+          <div className="table-responsive">
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>Marca</th>
+                  <th>Quantidade</th>
+                  <th>Preço</th>
+                  <th style={{ textAlign: 'center' }}>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {moveis.map(movel => (
+                  <tr key={movel.id}>
+                    <td>#{movel.id}</td>
+                    <td className="item-name">{movel.nome}</td>
+                    <td>{movel.marca}</td>
+                    <td>
+                      <span className={movel.quantidade > 0 ? 'stock-badge in-stock' : 'stock-badge out-stock'}>
+                        {movel.quantidade} un.
+                      </span>
+                    </td>
+                    <td className="price-cell">{formatarMoeda(movel.preco)}</td>
+                    <td>
+                      <div className="action-buttons">
+                        <button onClick={() => iniciarEdicao(movel)} className="btn-icon btn-edit" title="Editar">
+                          Editar
+                        </button>
+                        <button onClick={() => apagarMovel(movel.id)} className="btn-icon btn-delete" title="Excluir">
+                          Excluir
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <footer className="footer">
+        <div className="footer-content">
+          <p className="footer-brand"><strong>GRAEST</strong> - Educação & Inovação</p>
+          <div className="footer-links">
+            <a href="http://www.graest.edu.com.br" target="_blank" rel="noreferrer">
+              🌐 www.graest.edu.com.br
+            </a>
+            <a href="mailto:graest@gmail.com">
+              ✉️ graest@gmail.com
+            </a>
+            <a href="tel:+5592981828060">
+              📞 +55 (92) 9 8182 8060
+            </a>
+          </div>
+          <p className="footer-copy">© 2026 Todos os direitos reservados.</p>
+        </div>
+      </footer>
     </div>
   );
 }

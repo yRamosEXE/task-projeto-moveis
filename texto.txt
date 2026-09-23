@@ -1,0 +1,14 @@
+Terminal 1 - Backend
+
+cd backend
+source venv/bin/activate
+python manage.py migrate
+python manage.py runserver
+
+
+Terminal 2 - Frontend
+
+cd frontend
+nvm use 20
+npm run dev
+

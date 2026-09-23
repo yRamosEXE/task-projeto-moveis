@@ -1,57 +1,44 @@
 #!/bin/bash
 
-# Garante o diretório correto
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$DIR"
+# Libera as portas se já estiverem presas
+kill -9 $(lsof -t -i :8000) 2>/dev/null || true
+kill -9 $(lsof -t -i :5173) 2>/dev/null || true
+
+# Garante que o Postgres.app está ativo
+open -a Postgres 2>/dev/null || true
 
 echo "====================================================="
-echo "   A verificar ambiente Adequi Móveis..."
+echo "   A verificar ambiente Sistema de Gestão de Móveis..."
 echo "====================================================="
 
-# Verificar se o venv do python está disponível no sistema
-python3 -m venv --help >/dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "❌ Erro: O pacote python3-venv não está instalado no Ubuntu."
-    echo "💡 Execute no terminal: sudo apt update && sudo apt install python3-venv python3-pip"
-    read -p "Pressione Enter para fechar..."
-    exit 1
-fi
-
-# 1. Configurar e Subir Backend
-cd "$DIR/backend"
-if [ ! -d "venv" ]; then
-    echo "⚙️ A criar ambiente virtual Python..."
-    python3 -m venv venv
-fi
-
+# Ativa o backend Django
+cd ~/Documents/task-projeto-moveis/backend
 source venv/bin/activate
-pip install -r requirements.txt --quiet
-python manage.py migrate --noinput
-
-echo "🚀 A iniciar servidor Django..."
+python manage.py migrate
 python manage.py runserver &
-PID_BACK=$!
+BACKEND_PID=$!
 
-# 2. Configurar e Subir Frontend
-cd "$DIR/frontend"
-if [ ! -d "node_modules" ]; then
-    echo "📦 A instalar dependências do Frontend (npm install)..."
-    npm install --quiet
-fi
-
-echo "🚀 A iniciar servidor Vite..."
+# Ativa o Node 20 e inicia o frontend Vite
+cd ~/Documents/task-projeto-moveis/frontend
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+nvm use 20 >/dev/null 2>&1 || true
 npm run dev &
-PID_FRONT=$!
+FRONTEND_PID=$!
 
+# Aguarda 3 segundos para os servidores subirem
 sleep 3
-xdg-open http://localhost:5173 2>/dev/null || sensible-browser http://localhost:5173 2>/dev/null || true
+
+# Abre as páginas corretas no navegador
+open "http://localhost:5173"
+open "http://127.0.0.1:8000/api/moveis/"
 
 echo "====================================================="
 echo "   SISTEMA EM EXECUÇÃO!"
 echo "   Frontend: http://localhost:5173"
-echo "   Backend:  http://127.0.0.1:8000"
-echo "   (Feche esta janela para encerrar os servidores)"
+echo "   Backend API: http://127.0.0.1:8000/api/moveis/"
 echo "====================================================="
 
-trap "kill $PID_BACK $PID_FRONT 2>/dev/null" EXIT
+# Mantém o script rodando e fecha ambos ao pressionar CTRL+C
+trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit" SIGINT SIGTERM
 wait
