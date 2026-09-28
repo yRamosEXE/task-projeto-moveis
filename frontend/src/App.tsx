@@ -33,7 +33,7 @@ function App() {
     e.preventDefault();
     
     if (editandoId) {
-      axios.put(`http://localhost:8000/api/moveis/${editandoId}/`, novoMovel)
+      axios.patch(`http://localhost:8000/api/moveis/${editandoId}/`, novoMovel)
         .then(resposta => {
           setMoveis(moveis.map(m => m.id === editandoId ? resposta.data : m));
           cancelarEdicao();

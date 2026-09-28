@@ -2,3 +2,8 @@ venv/
 node_modules/
 __pycache__/
 .env
+
+# Variaveis de ambiente
+.env
+*.env
+backend/.env
